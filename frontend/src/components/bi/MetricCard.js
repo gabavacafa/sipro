@@ -22,7 +22,7 @@ export default function MetricCard({ metric, onDetail, className }) {
   return (
     <div data-testid={BI.card} data-code={metric.code} data-state={metric.state}
       className={cn(
-        "group relative flex flex-col gap-2 overflow-hidden rounded-xl border bg-card p-3",
+        "group relative flex flex-col gap-2 overflow-hidden rounded-xl border bg-card p-4",
         "transition-[border-color,box-shadow,transform] duration-200",
         "hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_8px_24px_-12px_hsl(var(--primary)/0.35)]",
         className)}>

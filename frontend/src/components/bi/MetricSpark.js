@@ -1,5 +1,5 @@
 import React from "react";
-import { Area, AreaChart, ResponsiveContainer, YAxis } from "recharts";
+import { Area, AreaChart, ResponsiveContainer, Tooltip, YAxis } from "recharts";
 import { TrendingDown, TrendingUp, Minus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -12,8 +12,8 @@ import { BI } from "@/constants/testIds";
  * tapi minim visualisasi"). Aturan kejujuran Fase 44 tetap berlaku: metrik `kosong`
  * tidak digambar sama sekali — sparkline nol palsu sama bohongnya dengan angka 0.
  *
- * Prioritas bentuk: deret waktu → sparkline area; persen → bilah progres;
- * rincian kategori → bilah proporsi top-3.
+ * Prioritas bentuk: deret waktu → sparkline area INTERAKTIF (hover = periode + nilai);
+ * persen → bilah progres berlabel; rincian kategori → bilah proporsi top-4.
  */
 
 export function TrendDelta({ series, unit }) {
@@ -35,7 +35,18 @@ export function TrendDelta({ series, unit }) {
   );
 }
 
-function Sparkline({ series, code }) {
+function SparkTip({ active, payload, unit }) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0].payload;
+  return (
+    <div className="rounded-md border bg-popover/95 px-2 py-1 text-[11px] shadow-lg backdrop-blur-md">
+      <span className="text-muted-foreground">{row.bucket}</span>{" "}
+      <span className="font-semibold tabular-nums">{formatMetricCompact(row.v, unit)}</span>
+    </div>
+  );
+}
+
+function Sparkline({ series, code, unit }) {
   // Deret kumulatif digambar dari `cumulative` (bukan `value` yang bisa datar): deret datar
   // membuat domain min=max sehingga garis menempel di atas dan area terisi penuh — terlihat
   // seperti balok pejal, bukan tren (temuan uji regresi). Domain juga diberi napas.
@@ -46,9 +57,9 @@ function Sparkline({ series, code }) {
   const pad = (hi - lo) || Math.abs(hi) || 1;
   const gid = `spark-${code}`;
   return (
-    <div className="h-11 w-full" aria-hidden="true">
+    <div className="h-16 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={rows} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
+        <AreaChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
           <defs>
             <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.35} />
@@ -56,9 +67,10 @@ function Sparkline({ series, code }) {
             </linearGradient>
           </defs>
           <YAxis hide domain={[Math.min(0, lo), hi + pad * 0.25]} />
-          <Area type="monotone" dataKey="v" stroke="hsl(var(--chart-1))" strokeWidth={1.75}
+          <Tooltip content={<SparkTip unit={unit} />} cursor={{ stroke: "hsl(var(--border))" }} />
+          <Area type="monotone" dataKey="v" stroke="hsl(var(--chart-1))" strokeWidth={2}
             fill={`url(#${gid})`} isAnimationActive={false} dot={false}
-            activeDot={false} />
+            activeDot={{ r: 3.5, strokeWidth: 2, stroke: "hsl(var(--card))" }} />
         </AreaChart>
       </ResponsiveContainer>
     </div>
@@ -68,14 +80,16 @@ function Sparkline({ series, code }) {
 function PctBar({ value }) {
   const pct = Math.max(0, Math.min(100, Number(value)));
   return (
-    <div className="space-y-1">
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+    <div className="space-y-1.5">
+      <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-secondary">
         <div className="h-full rounded-full transition-[width] duration-700"
           style={{ width: `${pct}%`,
             background: "linear-gradient(90deg, hsl(var(--chart-1)) 0%, hsl(var(--chart-3)) 100%)" }} />
       </div>
-      <div className="flex justify-between text-[10px] text-muted-foreground">
-        <span>0%</span><span>target 100%</span>
+      <div className="flex justify-between text-[11px] text-muted-foreground">
+        <span>0%</span>
+        <span className="font-medium text-foreground tabular-nums">{formatNumber(pct)}% tercapai</span>
+        <span>100%</span>
       </div>
     </div>
   );
@@ -85,28 +99,32 @@ function TopBars({ breakdown, unit }) {
   const rows = breakdown
     .filter((r) => r && r.value !== null && r.value !== undefined)
     .sort((a, b) => Math.abs(Number(b.value)) - Math.abs(Number(a.value)))
-    .slice(0, 3);
+    .slice(0, 4);
   if (!rows.length) return null;
   const max = Math.max(...rows.map((r) => Math.abs(Number(r.value)))) || 1;
+  const more = breakdown.length - rows.length;
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       {rows.map((r, i) => (
-        <div key={r.key || r.label || i} className="flex items-center gap-2">
-          <span className="w-[36%] truncate text-[10px] text-muted-foreground" title={r.label}>
+        <div key={r.key || r.label || i} className="flex items-center gap-2"
+          title={`${r.label}: ${formatMetric(r.value, unit) ?? formatNumber(r.value)}`}>
+          <span className="w-[34%] truncate text-[11px] text-muted-foreground">
             {r.label}
           </span>
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
-            <div className="h-full rounded-full"
+          <div className="h-2 flex-1 overflow-hidden rounded-full bg-secondary">
+            <div className="h-full rounded-full transition-[width] duration-500"
               style={{ width: `${(Math.abs(Number(r.value)) / max) * 100}%`,
                 backgroundColor: `hsl(var(--chart-${(i % 5) + 1}))`,
-                opacity: 0.9 - i * 0.15 }} />
+                opacity: 0.95 - i * 0.12 }} />
           </div>
-          <span className="shrink-0 whitespace-nowrap text-right text-[10px] font-medium tabular-nums"
-            title={formatMetric(r.value, unit) ?? ""}>
+          <span className="shrink-0 whitespace-nowrap text-right text-[11px] font-medium tabular-nums">
             {formatMetricCompact(r.value, unit)}
           </span>
         </div>
       ))}
+      {more > 0 ? (
+        <p className="text-[10px] text-muted-foreground/70">+{more} kategori lain di “Rincian”</p>
+      ) : null}
     </div>
   );
 }
@@ -116,10 +134,10 @@ export default function MetricSpark({ metric }) {
   const series = (metric.series || []).filter((s) => s?.value !== null && s?.value !== undefined);
   const breakdown = metric.breakdown || [];
   let body = null;
-  if (series.length >= 2) body = <Sparkline series={series} code={metric.code} />;
+  if (series.length >= 2) body = <Sparkline series={series} code={metric.code} unit={metric.unit} />;
   else if (metric.unit === "pct" && metric.value !== null && metric.value !== undefined) {
     body = <PctBar value={metric.value} />;
   } else if (breakdown.length >= 2) body = <TopBars breakdown={breakdown} unit={metric.unit} />;
   if (!body) return null;
-  return <div data-testid={BI.cardSpark} className="pt-1">{body}</div>;
+  return <div data-testid={BI.cardSpark} className="pt-1.5">{body}</div>;
 }

@@ -15,6 +15,8 @@ export const BI = {
   cardFormula: "bi-metric-formula",
   cardSpark: "bi-metric-spark",
   cardTrend: "bi-metric-trend",
+  filterBar: "bi-filter-bar",
+  projectHint: "bi-project-hint",
   // rincian & grafik
   chart: "bi-chart",
   detailDialog: "bi-metric-detail",

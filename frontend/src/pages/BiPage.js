@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from "react";
-import { BarChart3, Boxes, LineChart, Megaphone, Users2, BookOpen } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { BarChart3, Boxes, LineChart, Megaphone, Users2, BookOpen, Info } from "lucide-react";
 
 import TabPage from "@/components/patterns/TabPage";
 import EmptyState from "@/components/patterns/EmptyState";
+import FilterBar from "@/components/patterns/FilterBar";
 import { LoadingCards } from "@/components/patterns/StateViews";
 import ReferenceSelect from "@/components/patterns/ReferenceSelect";
 import MetricDictionaryTab from "@/components/bi/MetricDictionaryTab";
@@ -11,6 +12,7 @@ import {
 } from "@/components/bi/dashboards";
 import { useAuth } from "@/context/AuthContext";
 import { useReference } from "@/context/ReferenceContext";
+import api from "@/services/apiClient";
 import { BI } from "@/constants/testIds";
 
 /**
@@ -22,30 +24,78 @@ import { BI } from "@/constants/testIds";
  * metrik, dan satu aturan yang tidak bisa dilanggar layar — angka yang datanya belum ada
  * ditulis “belum ada data”, bukan 0.
  *
- * Rentang waktu tinggal di URL (`?period=`) supaya “lihat 90 hari terakhir” bisa dibagikan.
+ * Filter berlaku LINTAS tab: rentang cepat (7/30/90 hari…), tanggal kustom (menang atas
+ * rentang cepat — aturan `resolve_range` server), dan proyek. Filter proyek hanya dihormati
+ * dashboard yang datanya memang per-proyek (Eksekutif, Penjualan, Proyek & Biaya) — untuk
+ * Marketing & Tim ditampilkan keterangan, bukan diam-diam diabaikan.
  */
 export default function BiPage() {
   const { can, permsKnown } = useAuth();
   const { labelOf } = useReference();
   const canView = can("analytics", "view");
   const [period, setPeriod] = useState("30d");
-  const params = useMemo(() => ({ period }), [period]);
+  const [filters, setFilters] = useState({ project: "", date_from: "", date_to: "" });
+  const [projects, setProjects] = useState([]);
+
+  useEffect(() => {
+    api.get("/projects").then((res) => {
+      const rows = Array.isArray(res.data.data) ? res.data.data : [];
+      setProjects(rows.map((p) => ({ value: p.id, label: p.name })));
+    }).catch(() => setProjects([]));
+  }, []);
+
+  const baseParams = useMemo(() => {
+    const p = { period };
+    if (filters.date_from && filters.date_to) {
+      p.date_from = filters.date_from; p.date_to = filters.date_to;
+    }
+    return p;
+  }, [period, filters.date_from, filters.date_to]);
+  const projectParams = useMemo(() => (filters.project
+    ? { ...baseParams, project_id: filters.project } : baseParams), [baseParams, filters.project]);
+  const projectName = projects.find((p) => p.value === filters.project)?.label;
 
   const header = (
-    <div className="flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="page-title">Analitik & BI</h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">
-          Lima dashboard untuk lima pertanyaan yang berbeda, semuanya dihitung dari data
-          operasional yang sama — bukan hitungan kedua. Setiap angka membawa
-          <strong> status kelengkapan</strong>, <strong>rumusnya</strong>, dan
-          <strong> tautan ke daftar barisnya</strong>.
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="page-title">Analitik & BI</h1>
+          <p className="max-w-3xl text-sm text-muted-foreground">
+            Lima dashboard untuk lima pertanyaan yang berbeda, semuanya dihitung dari data
+            operasional yang sama — bukan hitungan kedua. Setiap angka membawa
+            <strong> status kelengkapan</strong>, <strong>rumusnya</strong>, dan
+            <strong> tautan ke daftar barisnya</strong>.
+          </p>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="w-44">
+          <ReferenceSelect group="analytics_period" value={period} onChange={setPeriod}
+            testId={BI.period} placeholder="Rentang…" />
+        </div>
+        <FilterBar testId={BI.filterBar}
+          filters={[
+            { key: "project", label: "Proyek", type: "select", options: projects },
+            { key: "tanggal", label: "Tanggal kustom", type: "daterange",
+              fromKey: "date_from", toKey: "date_to" },
+          ]}
+          value={filters}
+          onChange={(patch) => setFilters((cur) => ({ ...cur, ...patch }))}
+          onReset={() => setFilters({ project: "", date_from: "", date_to: "" })} />
+      </div>
+      {filters.date_from && !filters.date_to ? (
+        <p className="text-xs text-amber-700 dark:text-amber-400">
+          Isi juga “Sampai tanggal” — rentang kustom baru dipakai bila keduanya terisi.
         </p>
-      </div>
-      <div className="w-48">
-        <ReferenceSelect group="analytics_period" value={period} onChange={setPeriod}
-          testId={BI.period} placeholder="Rentang…" />
-      </div>
+      ) : null}
+      {filters.project ? (
+        <p data-testid={BI.projectHint}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Info className="h-3.5 w-3.5 shrink-0" />
+          Filter proyek <strong>{projectName}</strong> berlaku di dashboard Eksekutif,
+          Penjualan & Proyek — Marketing dan Tim datanya tidak per-proyek.
+        </p>
+      ) : null}
     </div>
   );
 
@@ -75,15 +125,15 @@ export default function BiPage() {
           membuat "Kinerja Tim" di tab bisa berbeda dengan "Kinerja Tim" di kamus. */}
       <TabPage paramKey="hub" testId={BI.hubTab} header={header} tabs={[
         { key: "eksekutif", label: labelOf("metric_persona", "eksekutif"), icon: LineChart,
-          content: <ExecutiveDashboard params={params} /> },
+          content: <ExecutiveDashboard params={projectParams} /> },
         { key: "penjualan", label: labelOf("metric_persona", "penjualan"), icon: Users2,
-          content: <SalesLeadDashboard params={params} /> },
+          content: <SalesLeadDashboard params={projectParams} /> },
         { key: "marketing", label: labelOf("metric_persona", "marketing"), icon: Megaphone,
-          content: <MarketingDashboard params={params} /> },
+          content: <MarketingDashboard params={baseParams} /> },
         { key: "proyek", label: labelOf("metric_persona", "proyek"), icon: Boxes,
-          content: <ProjectCostDashboard params={params} /> },
+          content: <ProjectCostDashboard params={projectParams} /> },
         { key: "tim", label: labelOf("metric_persona", "tim"), icon: BarChart3,
-          content: <TeamDashboard params={params} /> },
+          content: <TeamDashboard params={baseParams} /> },
         { key: "kamus", label: "Kamus Metrik", icon: BookOpen,
           content: <MetricDictionaryTab /> },
       ]} />

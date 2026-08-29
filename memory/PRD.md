@@ -13,6 +13,16 @@ Bahasa produk & komunikasi: **Indonesia**.
 - Kredensial uji: `/app/memory/test_credentials.md` (sandi demo `Sipro#2026`).
 
 ## Riwayat implementasi (terbaru di atas)
+### 29 Agu 2026 (lanjutan) — filter proyek & tanggal kustom BI + kartu lebih besar/interaktif
+- Filter bar lintas tab di `/bi`: rentang cepat + filter **Proyek** (select) dan **Tanggal
+  kustom** (daterange, menang atas rentang cepat sesuai `resolve_range` server) memakai pola
+  `FilterBar` (`bi-filter-bar`). Filter proyek hanya dikirim ke Eksekutif/Penjualan/Proyek;
+  saat aktif, hint `bi-project-hint` menjelaskan Marketing & Tim tidak per-proyek.
+- Grid kartu 4 kolom → maks 3 (`md:grid-cols-2 xl:grid-cols-3`, md agar tidak sempit di
+  tablet); sparkline lebih tinggi (h-16) dan interaktif (hover = periode+nilai), bilah persen
+  berlabel "% tercapai", bilah kategori top-4 + hint "+n kategori lain".
+- Diverifikasi testing agent (iteration_106): 100% skenario lulus, 0 error konsol.
+
 ### 29 Agu 2026 — visualisasi mini di kartu BI + desain grafik lanjutan
 - Kartu metrik `/bi` kini memuat visualisasi mini (`MetricSpark.js`): sparkline area
   bergradien untuk deret waktu (pakai `cumulative` bila ada, domain diberi napas agar deret
