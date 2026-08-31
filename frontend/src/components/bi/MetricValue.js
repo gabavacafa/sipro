@@ -40,7 +40,8 @@ export function formatMetric(value, unit) {
 export function formatMetricCompact(value, unit) {
   if (value === null || value === undefined) return null;
   if (unit === "idr") return `Rp ${formatCompact(value)}`;
-  return formatMetric(value, unit) ?? formatCompact(value);
+  if (["pct", "days", "hours", "ratio", "text"].includes(unit)) return formatMetric(value, unit);
+  return formatCompact(value);
 }
 
 export function MetricStateBadge({ state, coverage, className }) {

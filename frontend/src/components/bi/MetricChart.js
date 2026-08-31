@@ -106,8 +106,8 @@ export default function MetricChart({ metric, kind = "auto", title, description,
             </Pie>
             {/* Total di tengah donat: jawaban pertama yang dicari mata, tanpa menjumlah irisan. */}
             <text x="50%" y="46%" textAnchor="middle" dominantBaseline="central"
-              className="fill-foreground font-heading" fontSize={20} fontWeight={600}>
-              {tip(pieTotal)}
+              className="fill-foreground font-heading" fontSize={18} fontWeight={600}>
+              {formatMetricCompact(pieTotal, metric?.unit)}
             </text>
             <text x="50%" y="56%" textAnchor="middle" dominantBaseline="central"
               fill="hsl(var(--muted-foreground))" fontSize={11}>

@@ -47,7 +47,7 @@ export default function MetricCard({ metric, onDetail, className }) {
         <p data-testid={BI.cardFormula}
           className="flex items-start gap-1 text-[11px] text-muted-foreground">
           <Sigma className="mt-0.5 h-3 w-3 shrink-0" />
-          <span className="break-words">{metric.formula}</span>
+          <span className="break-words">{metric.formula.replace(/^Σ\s*/u, "")}</span>
         </p>
       ) : null}
       <div className="mt-auto flex items-center justify-between gap-2 pt-1">
@@ -59,6 +59,7 @@ export default function MetricCard({ metric, onDetail, className }) {
         ) : <span />}
         {hasBreakdown && onDetail ? (
           <button type="button" onClick={() => onDetail(metric)}
+            data-testid={BI.cardDetail} data-detail={metric.code}
             className="text-xs font-medium text-muted-foreground hover:text-foreground hover:underline">
             Rincian ({metric.breakdown.length})
           </button>

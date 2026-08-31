@@ -15,6 +15,7 @@ export const BI = {
   cardFormula: "bi-metric-formula",
   cardSpark: "bi-metric-spark",
   cardTrend: "bi-metric-trend",
+  cardDetail: "bi-metric-card-detail",
   filterBar: "bi-filter-bar",
   projectHint: "bi-project-hint",
   // rincian & grafik
@@ -23,6 +24,7 @@ export const BI = {
   detailTable: "bi-metric-detail-table",
   detailRow: "bi-metric-detail-row",
   detailExport: "bi-metric-export",
+  detailDrill: "bi-metric-detail-drill",
   incompleteBanner: "bi-incomplete-banner",
   // kamus metrik
   dictTable: "bi-dictionary-table",
